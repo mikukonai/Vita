@@ -1,0 +1,161 @@
+<!-- Project Aurora - Blog Framework V4.0 -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Project Vita</title>
+<script src="./jquery.min.js"></script>
+
+<style>
+canvas {
+    display: block;
+    border: none;
+    box-shadow: 0 2px 5px 0 rgba(0,0,0,0.2);
+    margin: 5px auto;
+}
+
+.main_framework {
+    margin: 20px auto;
+}
+
+.main_framework td {
+    text-align: center;
+}
+
+</style>
+</head>
+<body>
+
+<p style="text-align: center;">
+    <button id="compress">压缩</button>
+    <input type="file" id="file_selector" name="files" multiple class="Input">
+</p>
+
+<table class="main_framework">
+    <tr>
+        <td>原图</td>
+        <td>压缩后</td>
+    </tr>
+    <tr>
+        <td><canvas id="original_cv" style="width:320px;height:240px;" width="320" height="240"></canvas></td>
+        <td><canvas id="compressed_cv" style="width:320px;height:240px;" width="320" height="240"></canvas></td>
+    </tr>
+    <tr>
+        <td colspan="2"><canvas id="psnr_cv" style="width:700px;height:300px;" width="700" height="300"></canvas></td>
+    </tr>
+</table>
+
+<script src="./image.js"></script>
+<script src="./fourier.js"></script>
+<script src="./jpeg.js"></script>
+<script src="./canvas.js"></script>
+<script>
+
+let jpeg_codec = new JPEG_Codec();
+
+let original_cv = new Canvas('original_cv', [0,0], [255,255]);
+let compressed_cv = new Canvas('compressed_cv', [0,0], [255,255]);
+
+let psnr_cv = new Canvas('psnr_cv', [0,0], [0,0]);
+
+psnr_cv.GraphInit([0, 0], [100, 50], 10, 5, "PSNR-压缩率", "(%)", "(dB)");
+
+let WIDTH = 0;
+let HEIGHT = 0;
+
+$("#file_selector").change(() => {
+    // 获取文件名
+    let fakepath = $("#file_selector").val().split(/\\|\//gi);
+    let filename = fakepath[fakepath.length - 1];
+    // 读取文件
+    let file = $("#file_selector")[0].files[0];
+    let reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => {
+        loadImage(reader.result, (img)=>{
+            WIDTH = img.width;
+            HEIGHT = img.height;
+
+            original_cv.canvas.width = WIDTH;
+            original_cv.canvas.height = HEIGHT;
+            original_cv.canvas.style = `width:${WIDTH}px;height:${HEIGHT}px;`;
+            original_cv.Resize([0, 0], [WIDTH, HEIGHT]);
+            original_cv.context.drawImage(img, 0, 0);
+
+            compressed_cv.canvas.width = WIDTH;
+            compressed_cv.canvas.height = HEIGHT;
+            compressed_cv.canvas.style = `width:${WIDTH}px;height:${HEIGHT}px;`;
+            compressed_cv.Resize([0, 0], [WIDTH, HEIGHT]);
+        });
+    };
+});
+
+function loadImage(src, callback) {
+    let img = new Image();
+    img.src = src;
+    img.onload = () => {
+        callback(img);
+    }
+}
+
+$("#compress").click(() => {
+    let RGB = original_cv.ReadRGB();
+    let YUV = RGB_to_YUV420(RGB, WIDTH, HEIGHT);
+
+    let index = 1;
+    let last_psnr_point = null;
+
+    let timer = setInterval(()=>{
+
+        // let quality;
+        // if(index <= 100) {
+        //     quality = 100 / index;
+        // }
+        // else if(index < 200) {
+        //     quality = 2 - index / 100;
+        // }
+        // else {
+        //     quality = 10 / index - 0.04;
+        // }
+
+        let quality = Math.pow(1.005, index) - 1;
+
+        let bytestreams = jpeg_codec.encode(YUV[0], YUV[1], YUV[2], WIDTH, HEIGHT, quality);
+        let outputs = jpeg_codec.decode(bytestreams[0], bytestreams[1], bytestreams[2], quality);
+
+        let RGB_decoded = YUV420_to_RGB(outputs, WIDTH, HEIGHT);
+        compressed_cv.DrawRGB(RGB_decoded, WIDTH, HEIGHT);
+
+        let length = bytestreams[0].length + bytestreams[1].length + bytestreams[2].length;
+        let psnr = PSNR(RGB, RGB_decoded, WIDTH, HEIGHT);
+        let compress_rate = (length / (WIDTH * HEIGHT * 3)) * 100;
+
+        compressed_cv.context.shadowColor = 'rgba(0, 0, 0, 0.9)';
+        compressed_cv.context.shadowOffsetX = 1;
+        compressed_cv.context.shadowOffsetY = 1;
+        compressed_cv.context.shadowBlur = 1;
+
+        compressed_cv.Text(`质量因子：${quality.toFixed(2)}`, [10, 50], "#fff", "14px consolas");
+        compressed_cv.Text(`压缩率：${compress_rate.toFixed(2)}%`, [10, 30], "#fff", "14px consolas");
+        compressed_cv.Text(`PSNR：${psnr.toFixed(2)}dB`, [10, 10], "#fff", "14px consolas");
+
+        if(!last_psnr_point) {
+            psnr_cv.Circle([compress_rate, psnr], 0.3, "#00f");
+        }
+        else {
+            psnr_cv.Circle([compress_rate, psnr], 0.3, "#00f");
+            psnr_cv.Line(last_psnr_point, [compress_rate, psnr], "#00f");
+        }
+
+
+        index++;
+        last_psnr_point = [compress_rate, psnr];
+        if(quality >= 1000) clearInterval(timer);
+    }, 0);
+});
+
+
+</script>
+
+</body>
+</html>
