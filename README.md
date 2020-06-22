@@ -69,3 +69,16 @@ let yuv420 = jcodec.encode(stream_Y, stream_U, stream_V, quality);
 - 边缘补零会导致严重的振铃效应。
 - 三个通道的字节流复用成1个。
 - 成员函数静态化（`JPEG_Codec`类仅仅起到名称空间的作用），并且尽可能去除语言相关的部分，以利于C/C++移植。
+
+# 抖动
+
+定义在`dither.js`中。可视化页面`jpeg.html`。
+
+实现了 [Floyd-Steinberg 抖动算法](https://en.wikipedia.org/wiki/Floyd%E2%80%93Steinberg_dithering)。
+
+接口格式：`dither(matrix, width, height, quant_function)`
+
+- `matrix`：单通道图像矩阵，数据结构为`Imat`。
+- `width`和`height`：图像的宽度和高度。
+- `quant_function`：量化函数，默认为简单二值化函数。
+
