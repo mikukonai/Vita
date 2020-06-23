@@ -8,6 +8,21 @@
 
 ![](https://mikukonai.com/image/assets/M/history-of-video-coding.png)
 
+# 公共数据类型定义
+
+## 图像矩阵`Imat`
+
+用于表示图像单个通道的像素矩阵。其结构为**由每一行构成的数组**，如果以左上角为坐标原点(0,0)，那么访问位于(x,y)的像素的方法是`Imat[y][x]`。矩阵的每个元素为`number`类型，一般为[0,255]的整数。
+
+```
+Imat: [
+    [第0列, 第1列, ... , 第(width-1)列], // 第0行
+    [第0列, 第1列, ... , 第(width-1)列], // 第1行
+    ......
+    [第0列, 第1列, ... , 第(width-1)列], // 第(height-1)行
+]
+```
+
 
 # 静止图像Codec
 
@@ -16,6 +31,8 @@
 编解码器由一个模块`JPEG_Codec`类构成，使用ES5编写，Node和浏览器皆可使用，但是浏览器使用之前要注释掉`require`相关的代码。
 
 仅实现了变换编码和游程编码，未实现熵编码（哈夫曼编码）和码流封装部分，因此并非完整的JPEG编解码器。
+
+2019年7月7日首次实现；2020年6月重构并纳入本仓库。
 
 ## 依赖项
 
@@ -33,7 +50,7 @@ let jcodec = new JPEG_Codec(); // 无参数
 let streams = jcodec.encode(Y, U, V, width, height, quality);
 
 // 解码
-let yuv420 = jcodec.encode(stream_Y, stream_U, stream_V, quality);
+let yuv420 = jcodec.decode(stream_Y, stream_U, stream_V, quality);
 ```
 
 ## 接口定义
@@ -42,33 +59,26 @@ let yuv420 = jcodec.encode(stream_Y, stream_U, stream_V, quality);
 
 编码函数。此函数将**YUV420**格式的三个图像矩阵编码为三个码流。参数如下：
 
-- `matrix_Y`、`matrix_U`、`matrix_V`：分别是YUV三个通道的图像矩阵，其结构为**由每一行构成的数组**，如果以左上角为坐标原点(0,0)，那么访问位于(x,y)的像素的方法是`mat[y][x]`。输入的YUV矩阵**必须是YUV420格式的**，即U、V矩阵的长宽都是Y的一半。矩阵的元素为8位无符号整数，即[0,255]区间内的整数。
-
-```
-    图像矩阵的数据结构：
-    Imat: [
-      [第0列, 第1列, ... , 第(width-1)列], // 第0行
-      [第0列, 第1列, ... , 第(width-1)列], // 第1行
-      ......
-      [第0列, 第1列, ... , 第(width-1)列], // 第(height-1)行
-    ]
-```
-
-- `width`、`height`：输入图像的宽度和高度。这两个参数未必与输入矩阵的尺寸完全符合，如果小于实际尺寸，则只会处理一部分；如果大于实际尺寸，则范围外的部分可能是`NaN`。Codec不会检查这两个参数是否符合实际图像的尺寸。
-- `quality`：图像画质参数，值域为(0,+∞)。该参数用于控制压缩程度。此值越大，压缩程度越大，相应地画质越差。最佳的参数值可根据码率失真优化的结果确定，一般位于0.1~0.5之间。
+- `matrix_Y: Imat`、`matrix_U: Imat`、`matrix_V: Imat`：YUV三个通道。输入的YUV矩阵**必须是YUV420格式的**，即U、V矩阵的长宽都是Y的一半。矩阵的元素为8位无符号整数，即[0,255]区间内的整数。
+- `width: number`、`height: number`：输入图像的宽度和高度。这两个参数未必与输入矩阵的尺寸完全符合，如果小于实际尺寸，则只会处理一部分；如果大于实际尺寸，则范围外的部分可能是`NaN`。Codec不会检查这两个参数是否符合实际图像的尺寸。
+- `quality: number`：图像画质参数，值域为(0,+∞)。该参数用于控制压缩程度。此值越大，压缩程度越大，相应地画质越差。最佳的参数值可根据码率失真优化的结果确定，一般位于0.1~0.5之间。
 
 ### `JPEG_Codec.prototype.decode`
 
 字节码流解码函数。此函数将`encode`函数生成的字节码流解码为YUV420格式的三个图像矩阵。参数如下：
 
-- `bytestream_Y`、`bytestream_U`、`bytestream_V`：三个通道的字节流。每个参数都是一个数组，数组的元素均为8位无符号整数。
-- `quality`：图像画质参数，需要与编码时使用的参数一致。
+- `bytestream_Y: Array<number>`、`bytestream_U: Array<number>`、`bytestream_V: Array<number>`：三个通道的码流。
+- `quality: number`：图像画质参数，需要与编码时使用的参数一致。
 
 ## 待办
 
+- 熵编码接口（待后续按需要实现）。
 - 边缘补零会导致严重的振铃效应。
-- 三个通道的字节流复用成1个。
 - 成员函数静态化（`JPEG_Codec`类仅仅起到名称空间的作用），并且尽可能去除语言相关的部分，以利于C/C++移植。
+
+## 参考资料
+
+- [ITU T.81](https://www.w3.org/Graphics/JPEG/itu-t81.pdf)
 
 # 抖动
 
@@ -78,7 +88,22 @@ let yuv420 = jcodec.encode(stream_Y, stream_U, stream_V, quality);
 
 接口格式：`dither(matrix, width, height, quant_function)`
 
-- `matrix`：单通道图像矩阵，数据结构为`Imat`。
-- `width`和`height`：图像的宽度和高度。
-- `quant_function`：量化函数，默认为简单二值化函数。
+- `matrix: Imat`：单通道图像矩阵。
+- `width: number`和`height: number`：图像的宽度和高度。
+- `quant_function: number→number`：量化函数，默认为简单二值化函数。
 
+# 数字盲水印
+
+// TODO
+
+# 运动估计
+
+// TODO
+
+# Otsu二值化
+
+// TODO
+
+# Harris特征点
+
+// TODO

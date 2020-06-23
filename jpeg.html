@@ -122,6 +122,8 @@ $("#compress").click(() => {
 
     let timer = setInterval(()=>{
 
+        let start = Date.now();
+
         // let quality;
         // if(index <= 100) {
         //     quality = 100 / index;
@@ -155,11 +157,14 @@ $("#compress").click(() => {
         let psnr = PSNR(RGB, RGB_decoded, WIDTH, HEIGHT);
         let compress_rate = (length / (WIDTH * HEIGHT * 3)) * 100;
 
+        let end = Date.now();
+
         compressed_cv.context.shadowColor = 'rgba(0, 0, 0, 0.9)';
         compressed_cv.context.shadowOffsetX = 1;
         compressed_cv.context.shadowOffsetY = 1;
         compressed_cv.context.shadowBlur = 1;
 
+        compressed_cv.Text(`FPS：${(1000 / (end-start)).toFixed(2)}`, [10, 70], "#fff", "14px consolas");
         compressed_cv.Text(`质量因子：${quality.toFixed(2)}`, [10, 50], "#fff", "14px consolas");
         compressed_cv.Text(`压缩率：${compress_rate.toFixed(2)}%`, [10, 30], "#fff", "14px consolas");
         compressed_cv.Text(`PSNR：${psnr.toFixed(2)}dB`, [10, 10], "#fff", "14px consolas");
