@@ -261,7 +261,7 @@ DCT.prototype = {
 //  DCT_8_fast 8点一维离散余弦变换（快速算法）
 //
 //  参考资料：
-//  [1] Loeffler C , Ligtenberg A , Moschytz G S . Practical fast 1-D DCT algorithms with 11 multiplications[C]. Acoustics, Speech, and Signal Processing, 1989. ICASSP-89. 1989 International Conference on. IEEE, 1989.
+//  [1] Loeffler C , Ligtenberg A , Moschytz G S . Practical fast 1-D DCT algorithms with 11 multiplications[C]. ICASSP-89.
 //
 /////////////////////////////////////////////////////////////////
 
@@ -325,12 +325,58 @@ function DCT_8_fast(input) {
 //  IDCT_8_fast 8点一维离散余弦逆变换（快速算法）
 //
 //  参考资料：
-//  [1] Loeffler C , Ligtenberg A , Moschytz G S . Practical fast 1-D DCT algorithms with 11 multiplications[C]. Acoustics, Speech, and Signal Processing, 1989. ICASSP-89. 1989 International Conference on. IEEE, 1989.
+//  [1] Loeffler C , Ligtenberg A , Moschytz G S . Practical fast 1-D DCT algorithms with 11 multiplications[C]. ICASSP-89.
 //
 /////////////////////////////////////////////////////////////////
 
 function IDCT_8_fast(input) {
-    // TODO
+    const C_1 = 0.9807852804032304;    // Math.cos(1 * Math.PI / 16);
+    const S_1 = 0.19509032201612825;   // Math.sin(1 * Math.PI / 16);
+    const C_2 = 0.9238795325112867;    // Math.cos(2 * Math.PI / 16);
+    const S_2 = 0.3826834323650898;    // Math.sin(2 * Math.PI / 16);
+    const C_3 = 0.8314696123025452;    // Math.cos(3 * Math.PI / 16);
+    const S_3 = 0.5555702330196022;    // Math.sin(3 * Math.PI / 16);
+    const SQRT_2 = 1.4142135623730951; // Math.sqrt(2);
+
+    let C0 = input[0] * 0.5;
+    let C1 = input[4] * 0.5;
+    let C2 = input[2] / SQRT_2;
+    let C3 = input[6] / SQRT_2;
+    let C4 = (input[1] - input[7]) * 0.5;
+    let C5 = input[3] / SQRT_2;
+    let C6 = input[5] / SQRT_2;
+    let C7 = (input[1] + input[7]) * 0.5;
+
+    let B0 = C0 + C1;
+    let B1 = C0 - C1;
+    let B2 = C2 * S_2 - C3 * C_2;
+    let B3 = C2 * C_2 + C3 * S_2;
+    let B4 = C4 + C6;
+    let B5 = C7 - C5;
+    let B6 = C4 - C6;
+    let B7 = C7 + C5;
+
+    let A0 = B0 + B3;
+    let A1 = B1 + B2;
+    let A2 = B1 - B2;
+    let A3 = B0 - B3;
+    let A4 = B4 * C_3 - B7 * S_3;
+    let A5 = B5 * C_1 - B6 * S_1;
+    let A6 = B5 * S_1 + B6 * C_1;
+    let A7 = B4 * S_3 + B7 * C_3;
+
+    let output = new Array();
+
+    output[0] = (A0 + A7) / SQRT_2;
+    output[1] = (A1 + A6) / SQRT_2;
+    output[2] = (A2 + A5) / SQRT_2;
+    output[3] = (A3 + A4) / SQRT_2;
+    output[4] = (A3 - A4) / SQRT_2;
+    output[5] = (A2 - A5) / SQRT_2;
+    output[6] = (A1 - A6) / SQRT_2;
+    output[7] = (A0 - A7) / SQRT_2;
+
+    return output;
 }
 
 
@@ -347,6 +393,7 @@ function DCT_2D(size) {
     this.size = size;
     this.dct_obj = new DCT(size);
     this.dct_1d = (size === 8) ? DCT_8_fast : this.dct_obj.dct;
+    this.idct_1d = (size === 8) ? IDCT_8_fast : this.dct_obj.idct;
 }
 
 DCT_2D.prototype = {
@@ -386,7 +433,7 @@ DCT_2D.prototype = {
     // input: [row]每一行形成的列向量
     idct: function(input) {
         let size = this.size;
-        let dct_obj = this.dct_obj;
+        let idct_1d = this.idct_1d;
 
         if(input.length !== size) throw `DCT_2D: 输入矩阵的尺寸必须为${size}×${size}的方阵。`;
 
@@ -400,7 +447,7 @@ DCT_2D.prototype = {
             for(let y = 0; y < size; y++) {
                 dctcol[y] = input[y][x];
             }
-            let col = dct_obj.idct(dctcol);
+            let col = idct_1d(dctcol);
             // 结果写回output
             for(let y = 0; y < size; y++) {
                 output[y][x] = col[y];
@@ -409,7 +456,7 @@ DCT_2D.prototype = {
 
         // 对每行作DCT
         for(let y = 0; y < size; y++) {
-            output[y] = dct_obj.idct(output[y]);
+            output[y] = idct_1d(output[y]);
         }
 
         return output;
