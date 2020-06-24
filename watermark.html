@@ -116,19 +116,19 @@ function loadImage(src, callback) {
 
 $("#watermark").click(() => {
     let RGB_watermark = watermark_cv.ReadRGB();
+    let YUV_watermark = RGB_to_YUV420(RGB_watermark, 256, 256);
+
     let RGB = input_cv.ReadRGB();
+    let YUV = RGB_to_YUV420(RGB, WIDTH, HEIGHT);
 
-    let RGB_watermarked_R = add_watermark(RGB[0], RGB_watermark[0], 255, WIDTH, HEIGHT, 256, 256);
-    let RGB_watermarked_G = add_watermark(RGB[1], RGB_watermark[1], 255, WIDTH, HEIGHT, 256, 256);
-    let RGB_watermarked_B = add_watermark(RGB[2], RGB_watermark[2], 255, WIDTH, HEIGHT, 256, 256);
+    let YUV_watermarked_Y = add_watermark(YUV[0], YUV_watermark[0], 255, WIDTH, HEIGHT, 256, 256);
 
-    output_cv.DrawRGB([RGB_watermarked_R, RGB_watermarked_G, RGB_watermarked_B], WIDTH, HEIGHT);
+    let RGB_watermarked = YUV420_to_RGB([YUV_watermarked_Y, YUV[1], YUV[2]], WIDTH, HEIGHT);
+    output_cv.DrawRGB(RGB_watermarked, WIDTH, HEIGHT);
 
-    let RGB_recovered_R = show_watermark(RGB_watermarked_R, WIDTH, HEIGHT);
-    let RGB_recovered_G = show_watermark(RGB_watermarked_G, WIDTH, HEIGHT);
-    let RGB_recovered_B = show_watermark(RGB_watermarked_B, WIDTH, HEIGHT);
+    let YUV_recovered_Y = show_watermark(YUV_watermarked_Y, WIDTH, HEIGHT);
 
-    recovered_cv.DrawRGB([RGB_recovered_R, RGB_recovered_G, RGB_recovered_B], WIDTH, HEIGHT);
+    recovered_cv.DrawRGB([YUV_recovered_Y, YUV_recovered_Y, YUV_recovered_Y], WIDTH, HEIGHT);
 
 });
 
