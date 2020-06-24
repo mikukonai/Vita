@@ -117,25 +117,12 @@ $("#compress").click(() => {
     let RGB = original_cv.ReadRGB();
     let YUV = RGB_to_YUV420(RGB, WIDTH, HEIGHT);
 
-    let index = 1;
+    let quality = 100;
     let last_psnr_point = null;
 
     let timer = setInterval(()=>{
 
         let start = Date.now();
-
-        // let quality;
-        // if(index <= 100) {
-        //     quality = 100 / index;
-        // }
-        // else if(index < 200) {
-        //     quality = 2 - index / 100;
-        // }
-        // else {
-        //     quality = 10 / index - 0.04;
-        // }
-
-        let quality = Math.pow(1.005, index) - 1;
 
         let bytestreams = jpeg_codec.encode(YUV[0], YUV[1], YUV[2], WIDTH, HEIGHT, quality);
         let outputs = jpeg_codec.decode(bytestreams[0], bytestreams[1], bytestreams[2], quality);
@@ -165,7 +152,7 @@ $("#compress").click(() => {
         compressed_cv.context.shadowBlur = 1;
 
         compressed_cv.Text(`FPS：${(1000 / (end-start)).toFixed(2)}`, [10, 70], "#fff", "14px consolas");
-        compressed_cv.Text(`质量因子：${quality.toFixed(2)}`, [10, 50], "#fff", "14px consolas");
+        compressed_cv.Text(`质量因子：${quality}`, [10, 50], "#fff", "14px consolas");
         compressed_cv.Text(`压缩率：${compress_rate.toFixed(2)}%`, [10, 30], "#fff", "14px consolas");
         compressed_cv.Text(`PSNR：${psnr.toFixed(2)}dB`, [10, 10], "#fff", "14px consolas");
 
@@ -177,10 +164,9 @@ $("#compress").click(() => {
             psnr_cv.Line(last_psnr_point, [compress_rate, psnr], "#00f");
         }
 
-
-        index++;
+        quality--;
         last_psnr_point = [compress_rate, psnr];
-        if(quality >= 1000) clearInterval(timer);
+        if(quality <= 0) clearInterval(timer);
     }, 0);
 });
 

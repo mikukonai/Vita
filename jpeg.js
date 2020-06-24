@@ -7,7 +7,7 @@ function JPEG_Codec() {
 
 JPEG_Codec.BLOCK_SIZE = 8;
 
-JPEG_Codec.LuminanceQuantizationTable = [
+JPEG_Codec.luminance_quant_table = [
     16, 11, 10, 16, 24, 40, 51, 61,
     12, 12, 14, 19, 26, 58, 60, 55,
     14, 13, 16, 24, 40, 57, 69, 56,
@@ -19,7 +19,7 @@ JPEG_Codec.LuminanceQuantizationTable = [
 ];
 
 // 色度量化表
-JPEG_Codec.ChrominanceQuantizationTable = [
+JPEG_Codec.chrominance_quant_table = [
     17, 18, 24, 47, 99, 99, 99, 99,
     18, 21, 26, 66, 99, 99, 99, 99,
     24, 26, 56, 99, 99, 99, 99, 99,
@@ -31,7 +31,7 @@ JPEG_Codec.ChrominanceQuantizationTable = [
 ];
 
 // ZigZag编码的下标映射
-JPEG_Codec.ZigZagIndex = [
+JPEG_Codec.zigzag_index_table = [
     0,  1,  8,  16,  9,  2,  3, 10,
     17, 24, 32, 25, 18, 11,  4,  5,
     12, 19, 26, 33, 40, 48, 41, 34,
@@ -118,7 +118,7 @@ JPEG_Codec.prototype = {
     // 对单个块进行Zig-zag扫描和游程编码
     block_encode: function(qblock) {
         let block_size = JPEG_Codec.BLOCK_SIZE;
-        let zigzag_index = JPEG_Codec.ZigZagIndex;
+        let zigzag_index = JPEG_Codec.zigzag_index_table;
 
         // 第1步：ZigZag编码
         let zigzag = new Array();
@@ -183,7 +183,7 @@ JPEG_Codec.prototype = {
 
     // 对单个块的字节序列进行解码
     block_decode: function(byteseq) {
-        let zigzag_index = JPEG_Codec.ZigZagIndex;
+        let zigzag_index = JPEG_Codec.zigzag_index_table;
 
         // 第一步：解析RLE
         let len = byteseq[0];
@@ -214,10 +214,12 @@ JPEG_Codec.prototype = {
     // 编码单个通道的整个矩阵为字节流
     matrix_encode: function(matrix, width, height, type, quality) {
         let block_size = JPEG_Codec.BLOCK_SIZE;
+        // 从质量因子(0,100]导出量化表的缩放因子
+        let scale_factor = (quality < 50) ? (50 / quality) : (2 - quality / 50);
 
         // 选择灰度/色度量化表
-        let qtable = (type === "Y") ? JPEG_Codec.LuminanceQuantizationTable :
-                     (type === "U" || type === "V") ? JPEG_Codec.ChrominanceQuantizationTable : null;
+        let qtable = (type === "Y") ? JPEG_Codec.luminance_quant_table :
+                     (type === "U" || type === "V") ? JPEG_Codec.chrominance_quant_table : null;
 
         // 像素值偏移-128
         let shifted_matrix = new Array();
@@ -240,8 +242,15 @@ JPEG_Codec.prototype = {
             let dct_block = dct_blocks[i];
             // 量化
             let qblock = new Array();
-            for(let i = 0; i < block_size * block_size; i++) {
-                qblock[i] = Math.round(dct_block[i] / (qtable[i] * quality));
+            if(quality >= 100) { // 质量因子为100，不量化（量化步长为1，仅取整）
+                for(let i = 0; i < block_size * block_size; i++) {
+                    qblock[i] = Math.round(dct_block[i]);
+                }
+            }
+            else{
+                for(let i = 0; i < block_size * block_size; i++) {
+                    qblock[i] = Math.round(dct_block[i] / (qtable[i] * scale_factor));
+                }
             }
             // 熵编码
             let block_byteseq = this.block_encode(qblock);
@@ -258,10 +267,12 @@ JPEG_Codec.prototype = {
     bytestream_decode: function(bytestream, type, quality) {
         let block_size = JPEG_Codec.BLOCK_SIZE;
         let dct_2d = this.dct_2d;
+        // 从质量因子(0,100]导出量化表的缩放因子
+        let scale_factor = (quality < 50) ? (50 / quality) : (2 - quality / 50);
 
         // 选择灰度/色度量化表
-        let qtable = (type === "Y") ? JPEG_Codec.LuminanceQuantizationTable :
-                     (type === "U" || type === "V") ? JPEG_Codec.ChrominanceQuantizationTable : null;
+        let qtable = (type === "Y") ? JPEG_Codec.luminance_quant_table :
+                     (type === "U" || type === "V") ? JPEG_Codec.chrominance_quant_table : null;
 
         // 原图的尺寸
         let width = bytestream[0];
@@ -294,8 +305,13 @@ JPEG_Codec.prototype = {
 
             // 反量化
             let dct_block = new Array();
-            for(let i = 0; i < block_size * block_size; i++) {
-                dct_block[i] = qblock[i] * (qtable[i] * quality);
+            if(quality >= 100) { // 质量因子为100，不量化
+                dct_block = qblock;
+            }
+            else {
+                for(let i = 0; i < block_size * block_size; i++) {
+                    dct_block[i] = qblock[i] * (qtable[i] * scale_factor);
+                }
             }
 
             // 对块作IDCT

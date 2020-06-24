@@ -61,14 +61,14 @@ let yuv420 = jcodec.decode(stream_Y, stream_U, stream_V, quality);
 
 - `matrix_Y: Imat`、`matrix_U: Imat`、`matrix_V: Imat`：YUV三个通道。输入的YUV矩阵**必须是YUV420格式的**，即U、V矩阵的长宽都是Y的一半。矩阵的元素为8位无符号整数，即[0,255]区间内的整数。
 - `width: number`、`height: number`：输入图像的宽度和高度。这两个参数未必与输入矩阵的尺寸完全符合，如果小于实际尺寸，则只会处理一部分；如果大于实际尺寸，则范围外的部分可能是`NaN`。Codec不会检查这两个参数是否符合实际图像的尺寸。
-- `quality: number`：图像画质参数，值域为(0,+∞)。该参数用于控制压缩程度。此值越大，压缩程度越大，相应地画质越差。最佳的参数值可根据码率失真优化的结果确定，一般位于0.1~0.5之间。
+- `quality: number`：图像质量参数，值域为(0,100]。该参数用于控制压缩程度。值越大，画质越高，压缩程度越低。值为50时相当于采用标准推荐的量化表。
 
 ### `JPEG_Codec.prototype.decode`
 
 字节码流解码函数。此函数将`encode`函数生成的字节码流解码为YUV420格式的三个图像矩阵。参数如下：
 
 - `bytestream_Y: Array<number>`、`bytestream_U: Array<number>`、`bytestream_V: Array<number>`：三个通道的码流。
-- `quality: number`：图像画质参数，需要与编码时使用的参数一致。
+- `quality: number`：图像质量参数，需要与编码时使用的参数一致。
 
 ## 待办
 
