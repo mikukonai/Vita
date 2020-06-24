@@ -1,0 +1,139 @@
+<!-- Project Aurora - Blog Framework V4.0 -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Project Vita</title>
+<script src="./jquery.min.js"></script>
+
+<style>
+canvas {
+    display: block;
+    border: none;
+    box-shadow: 0 2px 5px 0 rgba(0,0,0,0.2);
+    margin: 5px auto;
+}
+
+.main_framework {
+    margin: 20px auto;
+}
+
+.main_framework td {
+    text-align: center;
+}
+
+</style>
+</head>
+<body>
+
+<p style="text-align: center;">
+    <button id="watermark">加水印</button>
+    <input type="file" id="input_file_selector" name="files" multiple class="Input">
+    <input type="file" id="watermark_file_selector" name="files" multiple class="Input">
+</p>
+
+<table class="main_framework">
+    <tr>
+        <td>原图</td>
+        <td>加水印后</td>
+        <td>恢复水印</td>
+    </tr>
+    <tr>
+        <td><canvas id="input_cv" style="width:320px;height:240px;" width="320" height="240"></canvas></td>
+        <td><canvas id="output_cv" style="width:320px;height:240px;" width="320" height="240"></canvas></td>
+        <td><canvas id="recovered_cv" style="width:320px;height:240px;" width="320" height="240"></canvas></td>
+    </tr>
+</table>
+
+<canvas id="watermark_cv" style="width:256px;height:256px;display: none;" width="256" height="256"></canvas>
+
+<script src="./lib/fourier.js"></script>
+<script src="./canvas.js"></script>
+<script src="./image.js"></script>
+<script src="./watermark.js"></script>
+<script>
+
+let watermark_cv = new Canvas('watermark_cv', [0,0], [0,0]);
+
+let input_cv = new Canvas('input_cv', [0,0], [255,255]);
+let output_cv = new Canvas('output_cv', [0,0], [255,255]);
+let recovered_cv = new Canvas('recovered_cv', [0,0], [255,255]);
+
+let WIDTH = 0;
+let HEIGHT = 0;
+
+$("#watermark_file_selector").change(() => {
+    // 读取文件
+    let file = $("#watermark_file_selector")[0].files[0];
+    let reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => {
+        loadImage(reader.result, (img)=>{
+            watermark_cv.context.drawImage(img, 0, 0);
+        });
+    };
+});
+
+$("#input_file_selector").change(() => {
+    // 获取文件名
+    let fakepath = $("#input_file_selector").val().split(/\\|\//gi);
+    let filename = fakepath[fakepath.length - 1];
+    // 读取文件
+    let file = $("#input_file_selector")[0].files[0];
+    let reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => {
+        loadImage(reader.result, (img)=>{
+            WIDTH = img.width;
+            HEIGHT = img.height;
+
+            input_cv.canvas.width = WIDTH;
+            input_cv.canvas.height = HEIGHT;
+            input_cv.canvas.style = `width:${WIDTH}px;height:${HEIGHT}px;`;
+            input_cv.Resize([0, 0], [WIDTH, HEIGHT]);
+            input_cv.context.drawImage(img, 0, 0);
+
+            output_cv.canvas.width = WIDTH;
+            output_cv.canvas.height = HEIGHT;
+            output_cv.canvas.style = `width:${WIDTH}px;height:${HEIGHT}px;`;
+            output_cv.Resize([0, 0], [WIDTH, HEIGHT]);
+
+            recovered_cv.canvas.width = WIDTH;
+            recovered_cv.canvas.height = HEIGHT;
+            recovered_cv.canvas.style = `width:${WIDTH}px;height:${HEIGHT}px;`;
+            recovered_cv.Resize([0, 0], [WIDTH, HEIGHT]);
+        });
+    };
+});
+
+function loadImage(src, callback) {
+    let img = new Image();
+    img.src = src;
+    img.onload = () => {
+        callback(img);
+    }
+}
+
+$("#watermark").click(() => {
+    let RGB_watermark = watermark_cv.ReadRGB();
+    let RGB = input_cv.ReadRGB();
+
+    let RGB_watermarked_R = add_watermark(RGB[0], RGB_watermark[0], 255, WIDTH, HEIGHT, 256, 256);
+    let RGB_watermarked_G = add_watermark(RGB[1], RGB_watermark[1], 255, WIDTH, HEIGHT, 256, 256);
+    let RGB_watermarked_B = add_watermark(RGB[2], RGB_watermark[2], 255, WIDTH, HEIGHT, 256, 256);
+
+    output_cv.DrawRGB([RGB_watermarked_R, RGB_watermarked_G, RGB_watermarked_B], WIDTH, HEIGHT);
+
+    let RGB_recovered_R = show_watermark(RGB_watermarked_R, WIDTH, HEIGHT);
+    let RGB_recovered_G = show_watermark(RGB_watermarked_G, WIDTH, HEIGHT);
+    let RGB_recovered_B = show_watermark(RGB_watermarked_B, WIDTH, HEIGHT);
+
+    recovered_cv.DrawRGB([RGB_recovered_R, RGB_recovered_G, RGB_recovered_B], WIDTH, HEIGHT);
+
+});
+
+
+</script>
+
+</body>
+</html>

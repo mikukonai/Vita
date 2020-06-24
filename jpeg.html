@@ -29,7 +29,7 @@ canvas {
 <p style="text-align: center;">
     <button id="dither">抖动：<span id="dither_status">关</span></button>
     <button id="compress">压缩</button>
-    <input type="file" id="file_selector" name="files" multiple class="Input">
+    <input type="file" id="input_file_selector" name="files" multiple class="Input">
 </p>
 
 <table class="main_framework">
@@ -38,25 +38,25 @@ canvas {
         <td>压缩后</td>
     </tr>
     <tr>
-        <td><canvas id="original_cv" style="width:320px;height:240px;" width="320" height="240"></canvas></td>
-        <td><canvas id="compressed_cv" style="width:320px;height:240px;" width="320" height="240"></canvas></td>
+        <td><canvas id="input_cv" style="width:320px;height:240px;" width="320" height="240"></canvas></td>
+        <td><canvas id="output_cv" style="width:320px;height:240px;" width="320" height="240"></canvas></td>
     </tr>
     <tr>
         <td colspan="2"><canvas id="psnr_cv" style="width:700px;height:300px;" width="700" height="300"></canvas></td>
     </tr>
 </table>
 
+<script src="./lib/fourier.js"></script>
 <script src="./canvas.js"></script>
 <script src="./image.js"></script>
-<script src="./fourier.js"></script>
 <script src="./jpeg.js"></script>
 <script src="./dither.js"></script>
 <script>
 
 let jpeg_codec = new JPEG_Codec();
 
-let original_cv = new Canvas('original_cv', [0,0], [255,255]);
-let compressed_cv = new Canvas('compressed_cv', [0,0], [255,255]);
+let input_cv = new Canvas('input_cv', [0,0], [255,255]);
+let output_cv = new Canvas('output_cv', [0,0], [255,255]);
 
 let psnr_cv = new Canvas('psnr_cv', [0,0], [0,0]);
 
@@ -67,12 +67,12 @@ let dither_flag = false;
 let WIDTH = 0;
 let HEIGHT = 0;
 
-$("#file_selector").change(() => {
+$("#input_file_selector").change(() => {
     // 获取文件名
-    let fakepath = $("#file_selector").val().split(/\\|\//gi);
+    let fakepath = $("#input_file_selector").val().split(/\\|\//gi);
     let filename = fakepath[fakepath.length - 1];
     // 读取文件
-    let file = $("#file_selector")[0].files[0];
+    let file = $("#input_file_selector")[0].files[0];
     let reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onload = () => {
@@ -80,16 +80,16 @@ $("#file_selector").change(() => {
             WIDTH = img.width;
             HEIGHT = img.height;
 
-            original_cv.canvas.width = WIDTH;
-            original_cv.canvas.height = HEIGHT;
-            original_cv.canvas.style = `width:${WIDTH}px;height:${HEIGHT}px;`;
-            original_cv.Resize([0, 0], [WIDTH, HEIGHT]);
-            original_cv.context.drawImage(img, 0, 0);
+            input_cv.canvas.width = WIDTH;
+            input_cv.canvas.height = HEIGHT;
+            input_cv.canvas.style = `width:${WIDTH}px;height:${HEIGHT}px;`;
+            input_cv.Resize([0, 0], [WIDTH, HEIGHT]);
+            input_cv.context.drawImage(img, 0, 0);
 
-            compressed_cv.canvas.width = WIDTH;
-            compressed_cv.canvas.height = HEIGHT;
-            compressed_cv.canvas.style = `width:${WIDTH}px;height:${HEIGHT}px;`;
-            compressed_cv.Resize([0, 0], [WIDTH, HEIGHT]);
+            output_cv.canvas.width = WIDTH;
+            output_cv.canvas.height = HEIGHT;
+            output_cv.canvas.style = `width:${WIDTH}px;height:${HEIGHT}px;`;
+            output_cv.Resize([0, 0], [WIDTH, HEIGHT]);
         });
     };
 });
@@ -114,7 +114,7 @@ $("#dither").click(() => {
 })
 
 $("#compress").click(() => {
-    let RGB = original_cv.ReadRGB();
+    let RGB = input_cv.ReadRGB();
     let YUV = RGB_to_YUV420(RGB, WIDTH, HEIGHT);
 
     let quality = 100;
@@ -130,13 +130,13 @@ $("#compress").click(() => {
         let RGB_decoded = YUV420_to_RGB(outputs, WIDTH, HEIGHT);
 
         if(dither_flag) {
-            let RDB_dithered_R = dither(RGB_decoded[0], WIDTH, HEIGHT);
-            let RDB_dithered_G = dither(RGB_decoded[1], WIDTH, HEIGHT);
-            let RDB_dithered_B = dither(RGB_decoded[2], WIDTH, HEIGHT);
-            compressed_cv.DrawRGB([RDB_dithered_R, RDB_dithered_G, RDB_dithered_B], WIDTH, HEIGHT);
+            let RGB_dithered_R = dither(RGB_decoded[0], WIDTH, HEIGHT);
+            let RGB_dithered_G = dither(RGB_decoded[1], WIDTH, HEIGHT);
+            let RGB_dithered_B = dither(RGB_decoded[2], WIDTH, HEIGHT);
+            output_cv.DrawRGB([RGB_dithered_R, RGB_dithered_G, RGB_dithered_B], WIDTH, HEIGHT);
         }
         else {
-            compressed_cv.DrawRGB(RGB_decoded, WIDTH, HEIGHT);
+            output_cv.DrawRGB(RGB_decoded, WIDTH, HEIGHT);
         }
 
 
@@ -146,15 +146,15 @@ $("#compress").click(() => {
 
         let end = Date.now();
 
-        compressed_cv.context.shadowColor = 'rgba(0, 0, 0, 0.9)';
-        compressed_cv.context.shadowOffsetX = 1;
-        compressed_cv.context.shadowOffsetY = 1;
-        compressed_cv.context.shadowBlur = 1;
+        output_cv.context.shadowColor = 'rgba(0, 0, 0, 0.9)';
+        output_cv.context.shadowOffsetX = 1;
+        output_cv.context.shadowOffsetY = 1;
+        output_cv.context.shadowBlur = 1;
 
-        compressed_cv.Text(`FPS：${(1000 / (end-start)).toFixed(2)}`, [10, 70], "#fff", "14px consolas");
-        compressed_cv.Text(`质量因子：${quality}`, [10, 50], "#fff", "14px consolas");
-        compressed_cv.Text(`压缩率：${compress_rate.toFixed(2)}%`, [10, 30], "#fff", "14px consolas");
-        compressed_cv.Text(`PSNR：${psnr.toFixed(2)}dB`, [10, 10], "#fff", "14px consolas");
+        output_cv.Text(`FPS：${(1000 / (end-start)).toFixed(2)}`, [10, 70], "#fff", "14px consolas");
+        output_cv.Text(`质量因子：${quality}`, [10, 50], "#fff", "14px consolas");
+        output_cv.Text(`压缩率：${compress_rate.toFixed(2)}%`, [10, 30], "#fff", "14px consolas");
+        output_cv.Text(`PSNR：${psnr.toFixed(2)}dB`, [10, 10], "#fff", "14px consolas");
 
         if(!last_psnr_point) {
             psnr_cv.Circle([compress_rate, psnr], 0.3, "#00f");
@@ -169,7 +169,6 @@ $("#compress").click(() => {
         if(quality <= 0) clearInterval(timer);
     }, 0);
 });
-
 
 </script>
 
