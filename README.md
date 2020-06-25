@@ -26,6 +26,8 @@ Imat: [
 
 # 静止图像Codec
 
+**▶ [可视化演示](https://mikukonai.com/Vita/jpeg.html)**
+
 定义在`jpeg.js`中。可视化页面`jpeg.html`。
 
 编解码器由一个模块`JPEG_Codec`类构成，使用ES5编写，Node和浏览器皆可使用，但是浏览器使用之前要注释掉`require`相关的代码。
@@ -82,6 +84,8 @@ let yuv420 = jcodec.decode(stream_Y, stream_U, stream_V, quality);
 
 # 抖动
 
+**▶ [可视化演示](https://mikukonai.com/Vita/jpeg.html)**
+
 定义在`dither.js`中。可视化页面`jpeg.html`。
 
 实现了 [Floyd-Steinberg 抖动算法](https://en.wikipedia.org/wiki/Floyd%E2%80%93Steinberg_dithering)。
@@ -93,6 +97,8 @@ let yuv420 = jcodec.decode(stream_Y, stream_U, stream_V, quality);
 - `quant_function: number→number`：量化函数，默认为简单二值化函数。
 
 # 数字盲水印
+
+**▶ [可视化演示](https://mikukonai.com/Vita/watermark.html)**
 
 定义在`watermark.js`中。可视化页面`watermark.html`。
 
@@ -116,6 +122,8 @@ let yuv420 = jcodec.decode(stream_Y, stream_U, stream_V, quality);
 // TODO
 
 # Harris特征点
+
+**▶ [可视化演示](https://mikukonai.com/Vita/harris.html)**
 
 定义在`harris.js`中。可视化页面`harris.html`。
 
