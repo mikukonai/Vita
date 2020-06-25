@@ -117,4 +117,10 @@ let yuv420 = jcodec.decode(stream_Y, stream_U, stream_V, quality);
 
 # Harris特征点
 
-// TODO
+定义在`harris.js`中。可视化页面`harris.html`。
+
+2019年8月7日首次实现；2020年6月重构并纳入本仓库。
+
+依赖：
+
+- `matrix.js`

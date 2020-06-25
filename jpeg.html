@@ -83,13 +83,13 @@ $("#input_file_selector").change(() => {
             input_cv.canvas.width = WIDTH;
             input_cv.canvas.height = HEIGHT;
             input_cv.canvas.style = `width:${WIDTH}px;height:${HEIGHT}px;`;
-            input_cv.Resize([0, 0], [WIDTH, HEIGHT]);
+            input_cv.Resize([0, HEIGHT], [WIDTH, 0]);
             input_cv.context.drawImage(img, 0, 0);
 
             output_cv.canvas.width = WIDTH;
             output_cv.canvas.height = HEIGHT;
             output_cv.canvas.style = `width:${WIDTH}px;height:${HEIGHT}px;`;
-            output_cv.Resize([0, 0], [WIDTH, HEIGHT]);
+            output_cv.Resize([0, HEIGHT], [WIDTH, 0]);
         });
     };
 });

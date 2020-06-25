@@ -1,0 +1,110 @@
+<!-- Project Aurora - Blog Framework V4.0 -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Project Vita</title>
+<script src="./jquery.min.js"></script>
+
+<style>
+canvas {
+    display: block;
+    border: none;
+    box-shadow: 0 2px 5px 0 rgba(0,0,0,0.2);
+    margin: 5px auto;
+}
+
+.main_framework {
+    margin: 20px auto;
+}
+
+.main_framework td {
+    text-align: center;
+}
+
+</style>
+</head>
+<body>
+
+<p style="text-align: center;">
+    <button id="harris">Harris特征点</button>
+    <input type="file" id="input_file_selector" name="files" multiple class="Input">
+</p>
+
+<table class="main_framework">
+    <tr>
+        <td>原图</td>
+    </tr>
+    <tr>
+        <td><canvas id="input_cv" style="width:320px;height:240px;" width="320" height="240"></canvas></td>
+    </tr>
+</table>
+
+<script src="./lib/fourier.js"></script>
+<script src="./canvas.js"></script>
+<script src="./image.js"></script>
+<script src="./matrix.js"></script>
+<script src="./harris.js"></script>
+<script>
+
+let input_cv = new Canvas('input_cv', [0,0], [255,255]);
+
+let WIDTH = 0;
+let HEIGHT = 0;
+
+$("#input_file_selector").change(() => {
+    // 获取文件名
+    let fakepath = $("#input_file_selector").val().split(/\\|\//gi);
+    let filename = fakepath[fakepath.length - 1];
+    // 读取文件
+    let file = $("#input_file_selector")[0].files[0];
+    let reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => {
+        loadImage(reader.result, (img)=>{
+            WIDTH = img.width;
+            HEIGHT = img.height;
+
+            input_cv.canvas.width = WIDTH;
+            input_cv.canvas.height = HEIGHT;
+            input_cv.canvas.style = `width:${WIDTH}px;height:${HEIGHT}px;`;
+            input_cv.Resize([0, HEIGHT], [WIDTH, 0]);
+            input_cv.context.drawImage(img, 0, 0);
+        });
+    };
+});
+
+function loadImage(src, callback) {
+    let img = new Image();
+    img.src = src;
+    img.onload = () => {
+        callback(img);
+    }
+}
+
+$("#harris").click(() => {
+
+    let RGB = input_cv.ReadRGB();
+    let YUV = RGB_to_YUV420(RGB, WIDTH, HEIGHT);
+
+    let Y_matrix = new Matrix(WIDTH, HEIGHT);
+    for(let y = 0; y < HEIGHT; y++) {
+        for(let x = 0; x < WIDTH; x++) {
+            Y_matrix.data[x + y * WIDTH] = (RGB[0][y][x] * 0.299 + RGB[1][y][x] * 0.587 + RGB[2][y][x] * 0.114);
+        }
+    }
+
+    let threshold = 10000;
+
+    let features = Harris(Y_matrix, threshold);
+    for(let i = 0; i < features.length; i++) {
+        input_cv.Circle(features[i], 2, "red");
+    }
+
+});
+
+
+</script>
+
+</body>
+</html>
