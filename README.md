@@ -115,7 +115,18 @@ let yuv420 = jcodec.decode(stream_Y, stream_U, stream_V, quality);
 
 # 运动估计
 
-// TODO
+**▶ [可视化演示](https://mikukonai.com/Vita/inter.html)**
+
+定义在`inter.js`中。可视化页面`inter.html`。
+
+采用三步搜索法作运动估计。
+
+2019年8月7日首次实现；2020年6月重构并纳入本仓库。
+
+依赖：
+
+- `matrix.js`
+
 
 # Otsu二值化
 

@@ -158,9 +158,9 @@ Canvas.prototype = {
         let yscale = (ymax-ymin) / (this.canvas.height);
 
         let margin_top = 50 * yscale;
-        let margin_bottom = 30 * yscale;
-        let margin_left = 30 * xscale;
-        let margin_right = 30 * xscale;
+        let margin_bottom = 40 * yscale;
+        let margin_left = 60 * xscale;
+        let margin_right = 60 * xscale;
 
         this.Resize([xmin-margin_left, ymin-margin_bottom], [xmax+margin_right, ymax+margin_top]);
 
@@ -169,18 +169,20 @@ Canvas.prototype = {
         for(let y = ymin; y <= ymax; y += ystep) {
             let color = (y === ymin || y === ymax) ? "#000" : "#ddd";
             this.Line([xmin, y], [xmax, y], color);
-            this.Text(y, [xmin-2*xscale, y-1*yscale], "#000", "12px Arial", "right");
+            this.Text(y.toFixed(1), [xmin-2*xscale, y-1*yscale], "#000", "12px Arial", "right");
         }
+        this.Line([xmin, ymax], [xmax, ymax], "#000");
 
         this.Text(yunit, [-2*xscale, ymax + 14*yscale], "#000", "12px Arial", "right");
 
         for(let x = xmin; x <= xmax; x += xstep) {
             let color = (x === xmin || x === xmax) ? "#000" : "#ddd";
             this.Line([x, ymin], [x, ymax], color);
-            this.Text(x, [x, ymin-14*yscale], "#000", "12px Arial", "center");
+            this.Text(x.toFixed(1), [x, ymin-14*yscale], "#000", "12px Arial", "center");
         }
+        this.Line([xmax, ymin], [xmax, ymax], "#000");
 
-        this.Text(xunit, [xmax + 20*xscale, ymin-14*yscale], "#000", "12px Arial", "center");
+        this.Text(xunit, [xmax + 30*xscale, ymin-14*yscale], "#000", "12px Arial", "center");
     },
 
 };

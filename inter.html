@@ -1,0 +1,229 @@
+<!-- Project Aurora - Blog Framework V4.0 -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Project Vita</title>
+<script src="./jquery.min.js"></script>
+
+<style>
+header {
+    font-size: 25px;
+    letter-spacing: 1px;
+    text-align: center;
+}
+
+canvas {
+    display: block;
+    border: none;
+    box-shadow: 0 2px 5px 0 rgba(0,0,0,0.2);
+    margin: 5px auto;
+}
+
+.main_framework {
+    margin: 20px auto;
+}
+
+.main_framework td {
+    text-align: center;
+}
+
+</style>
+</head>
+<body>
+
+<header>运动估计 / Project Vita</header>
+
+<p style="text-align: center;">
+    <button id="play" style="width: 100%;" data-state="init">开始加载并计算运动矢量（耗时较长）</button>
+</p>
+
+<table class="main_framework">
+    <tr>
+        <td><canvas id="input_cv" style="width:640px;height:360px;" width="640" height="360"></canvas></td>
+    </tr>
+    <tr>
+        <td><canvas id="mse_cv" style="width:640px;height:250px;" width="640" height="250"></canvas></td>
+    </tr>
+</table>
+
+<script src="./lib/fourier.js"></script>
+<script src="./canvas.js"></script>
+<script src="./image.js"></script>
+<script src="./matrix.js"></script>
+<script src="./inter.js"></script>
+<script>
+
+const FRAME_NUMBER = 133;
+const MAX_MSE = 33000;
+
+let input_cv = new Canvas('input_cv', [0,360], [640,0]);
+let mse_cv = new Canvas('mse_cv', [0,0], [FRAME_NUMBER, MAX_MSE]);
+
+function loadImage(src, callback) {
+    let img = new Image();
+    img.src = src;
+    img.onload = () => {
+        callback(img);
+    };
+}
+
+setTimeout(()=>{
+    loadImage("./resource/Hibike/Hibike-65.jpg", (img)=>{
+        input_cv.context.drawImage(img, 0, 0);
+    });
+}, 0);
+
+const BLOCK_SIZE = 16;
+
+let ORIGINAL_FRAME = new Array();
+
+let reference_frame = 0;
+
+let MVs = new Array();
+MVs[0] = null;
+let MSEs = new Array();
+MSEs[0] = 0;
+
+let loadCount = 0;
+let replayCount = 0;
+let replayTimer = 0;
+
+function motion_analyze(i) {
+    input_cv.context.drawImage(ORIGINAL_FRAME[i], 0, 0);
+    input_cv.context.shadowColor = 'rgba(0, 0, 0, 0.9)';
+    input_cv.context.shadowOffsetX = 1;
+    input_cv.context.shadowOffsetY = 1;
+    input_cv.context.shadowBlur = 1;
+    input_cv.Text(`第 ${i} 帧`, [20, 340], "#fff", "15px consolas");
+
+    let RGB = input_cv.ReadRGB();
+    let YUV = RGB_to_YUV420(RGB, 640, 360);
+
+    let current_frame = new Matrix(640, 360);
+
+    for(let y = 0; y < 360; y++) {
+        for(let x = 0; x < 640; x++) {
+            current_frame.data[x + y * 640] = YUV[0][y][x];
+        }
+    }
+
+    if(i > 0) {
+        MVs[i] = motion_estimation(current_frame, reference_frame, BLOCK_SIZE);
+        MSEs[i] = MSE(current_frame, reference_frame);
+    }
+
+    reference_frame = current_frame;
+
+    console.log(`已处理 ${i} 帧（${Math.round(i/FRAME_NUMBER * 100)}%）`);
+    $("#play").html(`已处理 ${i} 帧（${Math.round(i/FRAME_NUMBER * 100)}%）`);
+
+    // input_cv.DrawRGB(COMPRESSED_FRAME[i], 640, 360);
+
+    DrawMV(MVs[i], input_cv);
+    DrawMSE(MSEs, mse_cv);
+
+    if(i < ORIGINAL_FRAME.length - 1) {
+        setTimeout(()=>{motion_analyze(i+1);}, 0);
+    }
+    else {
+        console.log(`图片准备完成`);
+        $("#play").html("▶️");
+        $("#play").removeAttr("disabled");
+    }
+}
+
+$("#play").click(()=> {
+    let state = $("#play").attr("data-state");
+    if(state === "init") {
+        clearInterval(replayTimer);
+        $("#play").attr("data-state", "stop");
+        $("#play").attr("disabled", "disabled");
+        for(let i = 0; i < FRAME_NUMBER; i++) {
+            loadImage(`./resource/Hibike/Hibike-${i}.jpg`, (img) => {
+                ORIGINAL_FRAME[i] = img;
+                $("#play").html(`已传输 ${loadCount} 帧（${Math.round(loadCount/FRAME_NUMBER * 100)}%）`);
+                loadCount++;
+                // 加载完成后启动动画
+                if(loadCount === FRAME_NUMBER) {
+                    setTimeout(()=>{ motion_analyze(0); }, 0);
+                }
+            });
+        }
+    }
+    else if(state === "play") {
+        clearInterval(replayTimer);
+        $("#play").attr("data-state", "pause");
+        $("#play").html("▶️");
+    }
+    else if(state === "pause" || state === "stop"){
+        replayTimer = setInterval(()=> {
+            $("#play").attr("data-state", "play");
+            $("#play").html("⏸️");
+
+            if(replayCount > 0) {
+                input_cv.context.drawImage(ORIGINAL_FRAME[replayCount], 0, 0);
+                DrawMV(MVs[replayCount], input_cv);
+                DrawMSE(MSEs.slice(0, replayCount), mse_cv);
+            }
+
+            replayCount++;
+            // 播放完毕后的动作
+            if(replayCount >= FRAME_NUMBER) {
+                $("#play").attr("data-state", "stop");
+                $("#play").html("▶️");
+                replayCount = 0;
+                clearInterval(replayTimer);
+            }
+        }, 50); // 约20fps
+    }
+});
+
+// 绘制MSE曲线
+function DrawMSE(mse, cv) {
+    let max_mse = 100;
+    for(let i = 0; i < mse.length; i++) {
+        if(mse[i] > max_mse) {
+            max_mse = mse[i];
+        }
+    }
+    cv.Clear();
+    cv.GraphInit([0, 0], [FRAME_NUMBER, max_mse], FRAME_NUMBER / 10, max_mse / 10, "MSE", "", "");
+    let p1 = [0, mse[0]];
+    for(let i = 1; i < mse.length; i++) {
+        let p2 = [i, mse[i]];
+        cv.Line(p1, p2, "#00f");
+        p1 = p2;
+    }
+    cv.Text(`MSE = ${mse[mse.length-1].toFixed(1).toString()}`, [5,28000], "#000");
+}
+
+// 绘制运动矢量
+function DrawMV(MVmat, cv) {
+    if(!MVmat) return;
+    cv.context.shadowColor = 'rgba(0, 0, 0, 0.5)';
+    cv.context.shadowOffsetX = 1;
+    cv.context.shadowOffsetY = 1;
+    cv.context.shadowBlur = 1;
+    for(let y = 0; y < MVmat.height; y++) {
+        for(let x = 0; x < MVmat.width; x++) {
+            let mv = MVmat.get_element(x, y);
+            if(mv === undefined) mv = [0,0];
+            cv.Line([x * BLOCK_SIZE, y * BLOCK_SIZE],
+                    [(x+1) * BLOCK_SIZE, y * BLOCK_SIZE], "#00ff0055");
+            cv.Line([(x+1) * BLOCK_SIZE, y * BLOCK_SIZE],
+                    [(x+1) * BLOCK_SIZE, (y+1) * BLOCK_SIZE], "#00ff0055");
+            cv.Line([x * BLOCK_SIZE + (BLOCK_SIZE>>1), y * BLOCK_SIZE + (BLOCK_SIZE>>1)],
+                    [x * BLOCK_SIZE + mv[0] + (BLOCK_SIZE>>1), y * BLOCK_SIZE + mv[1] + (BLOCK_SIZE>>1)], "red");
+            if(mv[0] !== 0 || mv[1] !== 0)
+                cv.Circle([x * BLOCK_SIZE + (BLOCK_SIZE>>1), y * BLOCK_SIZE + (BLOCK_SIZE>>1)], 1, "#ff000055");
+            else
+                cv.Circle([x * BLOCK_SIZE + (BLOCK_SIZE>>1), y * BLOCK_SIZE + (BLOCK_SIZE>>1)], 1.5, "#66ccff");
+        }
+    }
+}
+
+</script>
+
+</body>
+</html>
