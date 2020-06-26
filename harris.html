@@ -28,6 +28,7 @@ canvas {
 
 <p style="text-align: center;">
     <button id="harris">Harris特征点</button>
+    <button id="otsu">Otsu二值化</button>
     <input type="file" id="input_file_selector" name="files" multiple class="Input">
 </p>
 
@@ -45,6 +46,7 @@ canvas {
 <script src="./image.js"></script>
 <script src="./matrix.js"></script>
 <script src="./harris.js"></script>
+<script src="./otsu.js"></script>
 <script>
 
 let input_cv = new Canvas('input_cv', [0,0], [255,255]);
@@ -100,6 +102,32 @@ $("#harris").click(() => {
     for(let i = 0; i < features.length; i++) {
         input_cv.Circle(features[i], 2, "red");
     }
+
+});
+
+$("#otsu").click(() => {
+
+    let RGB = input_cv.ReadRGB();
+    let YUV = RGB_to_YUV420(RGB, WIDTH, HEIGHT);
+
+    let Y_matrix = new Matrix(WIDTH, HEIGHT);
+    for(let y = 0; y < HEIGHT; y++) {
+        for(let x = 0; x < WIDTH; x++) {
+            Y_matrix.data[x + y * WIDTH] = YUV[0][y][x];
+        }
+    }
+
+    let binary = otsu(Y_matrix);
+
+    let binary_imat = new Array();
+    for(let y = 0; y < HEIGHT; y++) {
+        binary_imat[y] = new Array();
+        for(let x = 0; x < WIDTH; x++) {
+            binary_imat[y][x] = binary.data[x + y * WIDTH];
+        }
+    }
+
+    input_cv.DrawRGB([binary_imat, binary_imat, binary_imat], WIDTH, HEIGHT);
 
 });
 

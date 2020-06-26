@@ -130,7 +130,16 @@ let yuv420 = jcodec.decode(stream_Y, stream_U, stream_V, quality);
 
 # Otsu二值化
 
-// TODO
+**▶ [可视化演示](https://mikukonai.com/Vita/harris.html)**
+
+定义在`otsu.js`中。可视化页面`harris.html`。
+
+2019年8月10日首次实现；2020年6月重构并纳入本仓库。
+
+依赖：
+
+- `matrix.js`
+
 
 # Harris特征点
 
